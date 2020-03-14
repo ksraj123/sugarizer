@@ -7,9 +7,11 @@ requirejs.config({
 });
 
 // To add -
+	// it does not seem to be working on electron
 	// more than two users should not be able to join
+	// a feature to play the entire game - kind of a player mode - can click on anywhere on the log and play the game from there.
 	// possible moves heightlighting for only own color in multiplayer
-	// current board state not being sent when new user joins - reset or continue?
+			// Done - // current board state not being sent when new user joins - reset or continue?
 	// continue with ai when when person leaves?
 	// handle game ends like checkouts draws etc
 	// add themeing and undo functionality
@@ -113,8 +115,20 @@ new Vue({
 
 	methods: {
 		
-		onNetworkUserChanged: function(){
-
+		onNetworkUserChanged: function(msg){
+			if (this.presence.sharedInfo.users.length > 2){
+				console.log("More than 2 people joined the activity!");
+			}
+			if (this.isHost) {
+				this.presence.sendMessage(this.presence.getSharedInfo().id, {
+					user: this.presence.getUserInfo(),
+					content: this.position
+				});
+			}
+			console.log("Message = ");
+			console.log(msg);
+			console.log("Presence = ");
+			console.log(this.presence);
 		},
 
 		onNetworkDataReceived: function(msg){
@@ -163,6 +177,14 @@ new Vue({
 			this.AI = p4_fen2state(P4_INITIAL_BOARD);
 			this.Chess = new Chess();
 			this.position = this.Chess.fen();
+
+			if (this.presence) {
+				this.presence.sendMessage(this.presence.getSharedInfo().id, {
+					user: this.presence.getUserInfo(),
+					content: this.position
+				});
+			}
+
 		},
 
 		moveComputer(){
