@@ -8,6 +8,7 @@ requirejs.config({
 
 // To add -
 	// it does not seem to be working on electron
+	// use buddy fill colours to show your own moves and colors of other person so show possible moves of the other person
 	// more than two users should not be able to join
 	// a feature to play the entire game - kind of a player mode - can click on anywhere on the log and play the game from there.
 	// possible moves heightlighting for only own color in multiplayer
@@ -84,6 +85,8 @@ new Vue({
 				if (!vm.isHost){
 					vm.Chessboard.flip();
 				}
+
+				alert(vm.isHost);
 			});
 
 			// Link presence palette
