@@ -8,6 +8,7 @@ requirejs.config({
 
 // To add -
 			// Done - // it does not seem to be working on electron
+	// maybe add audio as well
 	// when the guest quits without making his move then the game gets stuck
 	// when gues puits then host can continue with ai but when host quits then guest can't
 	// Difficulty button
@@ -112,6 +113,16 @@ new Vue({
 				});
 			});
 		})
+
+		require(["sugar-web/graphics/palette", "domReady!"],
+			function (palette, doc) {
+				var homeButton = document.getElementById("zoom-home");
+				var homePalette = new palette.Palette(homeButton, "Diffculty");
+				var sampleText = document.createElement('p');
+				sampleText.innerText = "This is the content of the palette. " +
+					"This palette has a header.";
+				homePalette.setContent([sampleText]);
+			});
 	},
 
 	watch: {
