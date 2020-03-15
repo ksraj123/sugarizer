@@ -24,9 +24,9 @@
   <div id="main-toolbar" class="toolbar">
     <button class="toolbutton" id="activity-button" title="Chess Activity"></button>
     <button class="toolbutton" id="network-button" title="Network"></button>
-    <button class="toolbutton" id="difficulty-button" title="Difficulty"><div></div></button>
-    <button class="toolbutton" id="undo-button" title="Undo"></button>
-    <button class="toolbutton" id="reset-button" title="Reset"></button>
+    <button class="toolbutton" v-bind:class="(!aiMode || spectatorMode)? 'hide' : ''" id="difficulty-button" title="Difficulty"></button>
+    <button v-on:click="undo" class="toolbutton" v-bind:class="!aiMode || spectatorMode? 'hide' : ''" id="undo-button" title="Undo"></button>
+    <button v-on:click="resetBoard" class="toolbutton" id="reset-button" v-bind:class="spectatorMode? 'hide' : ''"  title="Reset"></button>
 
     <!-- Add more buttons here -->
 
@@ -38,14 +38,12 @@
 
   <!-- The content of your activity goes inside the canvas -->
   <div id="canvas">
-
-      <div id="myBoard" style="width: 400px"></div>
-      <button v-on:click="resetBoard">Reset</button>
-    <!-- Replace this message with your own content -->
-    <h1>Congratulations!</h1>
-    <p>You are ready to develop this activity. Go ahead and edit the files.<br />
-      You can remove this message in the index.html.</p>
-
+      <div id="myBoard" style="width: 80vh"></div>
+      <div id="game-info">
+        <div id="game-status"></div>
+        <div id="game-history"></div>
+        <div id="game-members"></div>
+      </div>
   </div>
 </div>
 

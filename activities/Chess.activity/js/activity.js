@@ -7,7 +7,9 @@ requirejs.config({
 });
 
 // To add -
+	// test of bugs in spectatorMode - multiplayer mode
 			// Done - // it does not seem to be working on electron
+			// Done - // some error in spectator mode in electron console
 	// maybe add audio as well
 			// Done - // when the guest quits without making his move then the game gets stuck
 	// when gues puits then host can continue with ai but when host quits then guest can't
@@ -22,6 +24,9 @@ requirejs.config({
 	// handle game ends like checkouts draws etc
 	// add themeing and undo functionality
 	// add logs
+	// some problems in resizing
+	// add the moves played thing
+	// handle promotion
 
 new Vue({
 	el: '#app',
@@ -34,10 +39,12 @@ new Vue({
 		user: null,
 		spectatorMode: false,
 		aiMode: true,
-		currentUsers: 0,
+		difficulty: 2,
+		currentUsers: [],
 		isHost: true,
 		palette: null,
-		presence: null
+		presence: null,
+		gameHistory: []
 	},
 
 	created: function() {
@@ -62,19 +69,6 @@ new Vue({
 				});
 				vm.resetBoard();
 				
-				// Load context
-				if (environment.objectId) {
-					activity.getDatastoreObject().loadAsText(function(error, metadata, data) {
-						if (error == null && data != null) {
-							vm.Chess = new Chess(data);
-							vm.position = vm.Chess.fen();
-							vm.AI = p4_fen2state(vm.position);
-						} else {
-							console.log("Error loading from journal");
-						}
-					});
-				}
-
 				// Shared instances
 				if (environment.sharedId) {
 					console.log("Shared instance");
@@ -87,11 +81,25 @@ new Vue({
 						network.onDataReceived(vm.onNetworkDataReceived);
 						network.onSharedActivityUserChanged(vm.onNetworkUserChanged);
 					});
+				} else if (environment.objectId) {
+					// Load context - dont load context in shared instance
+					activity.getDatastoreObject().loadAsText(function(error, metadata, data) {
+						if (error == null && data != null) {
+							vm.Chess = new Chess(data);
+							vm.position = vm.Chess.fen();
+							vm.AI = p4_fen2state(vm.position);
+						} else {
+							console.log("Error loading from journal");
+						}
+					});
 				}
 
 				if (!vm.isHost){
 					vm.Chessboard.flip();
 				}
+
+				// vm.coloizeIcons('w', environment.user);
+
 			});
 
 			// Link presence palette
@@ -112,59 +120,106 @@ new Vue({
 					network.onSharedActivityUserChanged(vm.onNetworkUserChanged);
 				});
 			});
+
+			requirejs(["sugar-web/graphics/palette"],
+				function (palette, doc) {
+					if (vm.spectatorMode)	return;
+					var difficultyButton = document.getElementById("difficulty-button");
+					var difficultyPalette = new palette.Palette(difficultyButton, "Diffculty");
+					var sampleText = document.createElement('div');
+					sampleText.innerHTML = '<div ><label><input type="radio" name="difficulty" value="0">Very Easy</label></div>\
+					<div><label><input type="radio" name="difficulty" value="1">Easy</label></div>\
+					<div><label><input type="radio"  checked="checked" name="difficulty" value="2">Moderate</label></div>\
+					<div><label><input type="radio" name="difficulty" value="3">Hard</label></div>\
+					<div><label><input type="radio" name="difficulty" value="4">Very Hard</label></div>'
+					difficultyPalette.setContent([sampleText]);
+					var allInputs = document.querySelectorAll('input[type="radio"]');
+					for (const input of allInputs){
+						input.addEventListener('click', function(event){
+							vm.changeDifficulty(event.target.value);
+						})
+					}
+				}
+			);
+
 		})
-		
-		// the difficulty button displays but does not work
-		require(["sugar-web/graphics/palette", "domReady!"],
-			function (palette, doc) {
-				var difficultyButton = document.getElementById("difficulty-button");
-				var difficultyPalette = new palette.Palette(difficultyButton, "Diffculty");
-				var sampleText = document.querySelector('#difficulty-button div');
-				sampleText.innerHTML = '<div ><label><input v-on:click="changeDifficulty" type="radio" name="difficulty" value="0">Very Easy</label></div>\
-				<div><label v-on:click="changeDifficulty"><input type="radio" name="difficulty" value="1">Easy</label></div>\
-				<div><label v-on:click="changeDifficulty"><input type="radio"  checked="checked" name="difficulty" value="2">Moderate</label></div>\
-				<div><label><input type="radio" name="difficulty" value="3">Hard</label></div>\
-				<div><label><input type="radio" name="difficulty" value="4">Very Hard</label></div>'
-				difficultyPalette.setContent([sampleText]);
-			});
+
+		window.addEventListener("resize", function() {
+			vm.Chessboard.resize();
+		});
 	},
 
 	watch: {
 		position: function(newPosition){
 			this.Chessboard.position(newPosition);
+		},
+
+		// handles the situation where the guest quits without making his move
+		aiMode: function(newVal, oldVal){
+			if (newVal !== oldVal){
+				if (newVal){
+					this.moveComputer();
+				}
+			}
 		}
 	},
 
 	methods: {
-		
-		changeDifficulty: function(event){
-			console.log("here!");
-			console.log("Difficulty  = " + event.target.value);
-			this.difficulty = event.target.value;
+
+		// buddy theme mode - colorize icons - not working right now
+		coloizeIcons: function(color, user){
+			var vm = this;
+			console.log(user.colorvalue);
+			requirejs(["sugar-web/graphics/icon"], function(icon){
+				var imgs = document.querySelectorAll('img');
+				imgs = Array.prototype.slice.call(imgs);
+				var elements = imgs.map(function(ele){
+					if (ele.attributes[3].localName === "data-piece")
+						if (ele.attributes[3].nodeValue[0] === color)
+							icon.colorize(ele, user.colorvalue);
+							// console.log(ele.attributes[3].nodeValue);
+				});
+
+			})
 		},
 
-		onNetworkUserChanged: function(msg){
+		undo: function(){
+			// no undo in multiplayer
+			if (!this.aiMode)	return;
+			this.Chess.undo();
+			this.Chess.undo();
+			this.Chessboard.position(this.Chess.fen());
+			this.position = this.Chess.fen();
+			this.AI = p4_fen2state(this.position);
+		},
+		
+		changeDifficulty: function(newDifficulty){
+			console.log("Difficulty  = " + newDifficulty);
+			this.difficulty = newDifficulty;
+		},
 
+		// this function will be executed everytime a user joins or leaves on all connected users the details of changed user will be passed in as argument
+		onNetworkUserChanged: function(msg){
+			
+			// only the host has correct array of current users after one user joins or leaves
 			if (msg.move === 1){
-				this.currentUsers++;
+				this.currentUsers.push(msg.user);
 			} else {
-				this.currentUsers--;
+				this.currentUsers = this.currentUsers.filter(function(ele){
+					if (ele.networkId === msg.user.networkId)	return false;
+					return true;
+				});
 			}
 
-			this.aiMode = (this.currentUsers >= 2? false : true);
+			if (this.currentUsers.length === 1)	return;
 
-			// handles the situation where the guest quits without making his move
-			if (this.currentUsers < 2 && msg.move === -1) this.moveComputer();
-
-			if (this.currentUsers === 1)	return;
-
+			// all messages are sent to all in precense
 			if (this.isHost) {
-				console.log(this.presence.getSharedInfo());
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
 					content: {
 						action: 'init',
-						type: (this.currentUsers > 2)? 'Spectator' : 'Player',
+						currentUsers: this.currentUsers,
 						data: this.position
 					}
 				});
@@ -172,16 +227,36 @@ new Vue({
 		},
 
 		onNetworkDataReceived: function(msg){
+			console.log("On netwrok data recieved!");
+			// no one recieves their own message as there is no point
 			if (this.presence.getUserInfo().networkId === msg.user.networkId) {
 				return;
 			}
 			switch(msg.content.action){
 				case 'init':
-					if (msg.content.type === 'Spectator')
-						this.spectatorMode = true;
-					this.aiMode = false;
+					this.currentUsers = msg.content.currentUsers;
 					break;
 			}
+
+			var currentUserNetId = this.presence.getUserInfo().networkId;
+			console.log("current user = " + currentUserNetId);
+			
+			if (this.currentUsers[0].networkId == currentUserNetId){
+				this.isHost = true;
+				this.spectatorMode = false;				
+			} else if (this.currentUsers[1].networkId == currentUserNetId){
+				this.isHost = false;
+				this.spectatorMode = false;
+			} else {
+				this.spectatorMode = true;
+			}
+
+			if (this.currentUsers.length <= 1){
+				this.aiMode = true;
+			} else {
+				this.aiMode = false;
+			}
+
 			this.Chess.load(msg.content.data);
 			this.AI = p4_fen2state(msg.content.data);
 			this.Chessboard.position(msg.content.data);
@@ -201,6 +276,7 @@ new Vue({
 			this.position = this.Chess.fen();
 			
 			this.AI.move(source, target);
+			console.log("in drop piece presence! " + this.aiMode);
 			if (this.presence && !this.aiMode) {
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
@@ -243,7 +319,7 @@ new Vue({
 
 		moveComputer(){
 			if (this.Chess.turn() === 'w') return;
-			let moves = this.AI.findmove(P4WN_DEFAULT_LEVEL + 1);
+			let moves = this.AI.findmove(this.difficulty + 1);
 			let start = String.fromCharCode(96+(moves[0]%10)) + (Math.floor(moves[0]/10)-1);
 			let end = String.fromCharCode(96+(moves[1]%10)) + (Math.floor(moves[1]/10)-1);
 			this.Chess.move({from: start, to: end });
@@ -261,6 +337,8 @@ new Vue({
 
 		onDragStart: function(source, piece) {
 			// prevent the spectator from moving pieces
+			console.log("from spectator " + this.spectatorMode);
+			
 			if (this.spectatorMode)	return false;
 
 			// prevent drag when game is already over
@@ -353,6 +431,8 @@ new Vue({
 
 		stopActivity: function(){
 			var vm = this;
+			// context not saved when in multiplayer mode as other person can continue with ai
+			if (!vm.aiMode) return;
 			requirejs(["sugar-web/activity/activity"], function(activity) {
 				console.log('writing...');
 				activity.getDatastoreObject().setDataAsText(vm.position);

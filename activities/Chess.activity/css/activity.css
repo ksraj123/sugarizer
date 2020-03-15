@@ -19,7 +19,7 @@
 }
 
 #main-toolbar #reset-button {
-  background-image: url(../icons/help.svg);
+  background-image: url(../icons/redo.svg);
 }
 
 #fullscreen-button {
@@ -70,6 +70,16 @@
   border-radius: 5.5px;
 }
 
+#canvas{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 input[type="radio"]{
   margin: 5px;
+}
+
+.hide{
+  display: none;
 }
