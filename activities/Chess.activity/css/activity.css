@@ -6,8 +6,38 @@
   background-image: url(../lib/sugar-web/graphics/icons/actions/zoom-home.svg);
 }
 
-#main-toolbar #zoom-groups {
-  background-image: url(lib/sugar-web/graphics/icons/actions/zoom-home.svg);
+#main-toolbar #difficulty-button {
+  background-image: url(../icons/robot-on.svg);
+}
+
+#main-toolbar #help-button {
+  background-image: url(../icons/help.svg);
+}
+
+#main-toolbar #undo-button {
+  background-image: url(../icons/edit-undo.svg);
+}
+
+#main-toolbar #reset-button {
+  background-image: url(../icons/help.svg);
+}
+
+#fullscreen-button {
+  background-image: url(../icons/view-fullscreen.svg);
+}
+
+#unfullscreen-button {
+  background-image: url(../icons/view-return.svg);
+  border: 0;
+  border-radius: 0px;
+  margin: 1px;
+  width: 45px;
+  height: 45px;
+  top: 0;
+  right: 2%;
+  position: absolute;
+  visibility: hidden;
+  z-index: 5;
 }
 
 #private-button {
@@ -38,4 +68,8 @@
   background-size: contain;
   border: 0;
   border-radius: 5.5px;
+}
+
+input[type="radio"]{
+  margin: 5px;
 }

@@ -9,16 +9,16 @@ requirejs.config({
 // To add -
 			// Done - // it does not seem to be working on electron
 	// maybe add audio as well
-	// when the guest quits without making his move then the game gets stuck
+			// Done - // when the guest quits without making his move then the game gets stuck
 	// when gues puits then host can continue with ai but when host quits then guest can't
 	// Difficulty button
-	// even if shared if the number of players is 1 then the computer should play
+			// Done - // even if shared if the number of players is 1 then the computer should play
 			// Done - // use buddy fill colours to show your own moves and colors of other person so show possible moves of the other person
-	// more than two users should not be able to join
+			// Done - // more than two users should not be able to join
 	// a feature to play the entire game - kind of a player mode - can click on anywhere on the log and play the game from there.
-	// possible moves heightlighting for only own color in multiplayer
+			// Done - // possible moves heightlighting for only own color in multiplayer
 			// Done - // current board state not being sent when new user joins - reset or continue?
-	// continue with ai when when person leaves?
+			// Done - // continue with ai when when person leaves?
 	// handle game ends like checkouts draws etc
 	// add themeing and undo functionality
 	// add logs
@@ -113,15 +113,19 @@ new Vue({
 				});
 			});
 		})
-
+		
+		// the difficulty button displays but does not work
 		require(["sugar-web/graphics/palette", "domReady!"],
 			function (palette, doc) {
-				var homeButton = document.getElementById("zoom-home");
-				var homePalette = new palette.Palette(homeButton, "Diffculty");
-				var sampleText = document.createElement('p');
-				sampleText.innerText = "This is the content of the palette. " +
-					"This palette has a header.";
-				homePalette.setContent([sampleText]);
+				var difficultyButton = document.getElementById("difficulty-button");
+				var difficultyPalette = new palette.Palette(difficultyButton, "Diffculty");
+				var sampleText = document.querySelector('#difficulty-button div');
+				sampleText.innerHTML = '<div ><label><input v-on:click="changeDifficulty" type="radio" name="difficulty" value="0">Very Easy</label></div>\
+				<div><label v-on:click="changeDifficulty"><input type="radio" name="difficulty" value="1">Easy</label></div>\
+				<div><label v-on:click="changeDifficulty"><input type="radio"  checked="checked" name="difficulty" value="2">Moderate</label></div>\
+				<div><label><input type="radio" name="difficulty" value="3">Hard</label></div>\
+				<div><label><input type="radio" name="difficulty" value="4">Very Hard</label></div>'
+				difficultyPalette.setContent([sampleText]);
 			});
 	},
 
@@ -133,6 +137,12 @@ new Vue({
 
 	methods: {
 		
+		changeDifficulty: function(event){
+			console.log("here!");
+			console.log("Difficulty  = " + event.target.value);
+			this.difficulty = event.target.value;
+		},
+
 		onNetworkUserChanged: function(msg){
 
 			if (msg.move === 1){
