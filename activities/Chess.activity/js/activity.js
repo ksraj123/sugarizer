@@ -7,7 +7,8 @@ requirejs.config({
 });
 
 // To add -
-	// it does not seem to be working on electron
+			// Done - // it does not seem to be working on electron
+	// even if shared if the number of players is 1 then the computer should play
 	// use buddy fill colours to show your own moves and colors of other person so show possible moves of the other person
 	// more than two users should not be able to join
 	// a feature to play the entire game - kind of a player mode - can click on anywhere on the log and play the game from there.
@@ -27,6 +28,8 @@ new Vue({
 		AI: '',
 		Chessboard:'',
 		user: '',
+		spectator: false,
+		currentUsers: 0,
 		isHost: true,
 		palette: null,
 		presence: null
@@ -45,7 +48,6 @@ new Vue({
 	},
 
 	mounted: function() {
-		// Load last library from Journal
 		var vm = this;
 		requirejs(["sugar-web/activity/activity", "sugar-web/env", "sugar-web/graphics/presencepalette"], function(activity, env, presencepalette) {
 			env.getEnvironment(function(err, environment) {
@@ -85,8 +87,6 @@ new Vue({
 				if (!vm.isHost){
 					vm.Chessboard.flip();
 				}
-
-				alert(vm.isHost);
 			});
 
 			// Link presence palette
@@ -119,24 +119,42 @@ new Vue({
 	methods: {
 		
 		onNetworkUserChanged: function(msg){
-			if (this.presence.sharedInfo.users.length > 2){
-				console.log("More than 2 people joined the activity!");
+
+			if (msg.move === 1){
+				this.currentUsers++;
+			} else {
+				this.currentUsers--;
 			}
+
+			if (this.currentUsers === 1) {
+				return
+			}
+
 			if (this.isHost) {
+				console.log(this.presence.getSharedInfo());
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
-					content: this.position
+					content: {
+						action: 'init',
+						type: (this.currentUsers > 2)? 'Spectator' : 'Player',
+						data: this.position
+					}
 				});
 			}
-			console.log("Message = ");
-			console.log(msg);
-			console.log("Presence = ");
-			console.log(this.presence);
 		},
 
 		onNetworkDataReceived: function(msg){
-			this.Chess.load(msg.content);
-			this.Chessboard.position(msg.content);
+			if (this.presence.getUserInfo().networkId === msg.user.networkId) {
+				return;
+			}
+			switch(msg.content.action){
+				case 'init':
+					if (msg.content.type === 'Spectator')
+						this.spectator = true;
+					break;
+			}
+			this.Chess.load(msg.content.data);
+			this.Chessboard.position(msg.content.data);
 		},
 
 		onDropPiece: function(source, target){
@@ -155,7 +173,9 @@ new Vue({
 			if (this.presence) {
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
-					content: this.position
+					content: {
+						data: this.position
+					}
 				});
 			} else {
 				// what if they disconnect and want to continue game with computer?
@@ -184,7 +204,9 @@ new Vue({
 			if (this.presence) {
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
-					content: this.position
+					content: {
+						data: this.position
+					}
 				});
 			}
 
@@ -208,6 +230,9 @@ new Vue({
 		},
 
 		onDragStart: function(source, piece) {
+			// prevent the spectator from moving pieces
+			if (this.spectator)	return false;
+
 			// prevent drag when game is already over
 			if (this.Chess.game_over()) return false
 
@@ -236,14 +261,33 @@ new Vue({
 			$('#myBoard .square-55d63').css('background', '')
 		},
 
+		lightenColor: function (col, amt) {
+			var num = parseInt(col.slice(1),16);
+			
+			var newValues = [
+				(num >> 16) + amt, // red
+				((num >> 8) & 0x00FF) + amt, // blue
+				(num & 0x0000FF) + amt // green
+			]
+
+			newValues = newValues.map(function(value){
+				if (value > 255) return 255;
+				if (value < 0) return 0;
+				return value;
+			})
+		 
+			return "#" + (newValues[2] | (newValues[1] << 8) | (newValues[0] << 16)).toString(16);
+		  
+		},		
+
 		greySquare: function(square) {
-			var whiteSquareGrey = this.user.colorvalue.stroke;
 			var blackSquareGrey = this.user.colorvalue.fill;
+			var whiteSquareGrey = this.lightenColor(blackSquareGrey, 50);
 			var $square = $('#myBoard .square-' + square)
 		
 			var background = whiteSquareGrey
 			if ($square.hasClass('black-3c85d')) {
-			background = blackSquareGrey
+				background = blackSquareGrey
 			}
 		
 			$square.css('background', background)
@@ -255,7 +299,6 @@ new Vue({
 				square: square,
 				verbose: true
 			})
-			console.log(moves);
 		
 			// exit if there are no moves available for this square
 			if (moves.length === 0) return
