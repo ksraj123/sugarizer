@@ -8,8 +8,11 @@ requirejs.config({
 
 // To add -
 			// Done - // it does not seem to be working on electron
+	// when the guest quits without making his move then the game gets stuck
+	// when gues puits then host can continue with ai but when host quits then guest can't
+	// Difficulty button
 	// even if shared if the number of players is 1 then the computer should play
-	// use buddy fill colours to show your own moves and colors of other person so show possible moves of the other person
+			// Done - // use buddy fill colours to show your own moves and colors of other person so show possible moves of the other person
 	// more than two users should not be able to join
 	// a feature to play the entire game - kind of a player mode - can click on anywhere on the log and play the game from there.
 	// possible moves heightlighting for only own color in multiplayer
@@ -23,12 +26,13 @@ new Vue({
 	el: '#app',
 
 	data: {
-		position: '',
-		Chess: '',
-		AI: '',
-		Chessboard:'',
-		user: '',
-		spectator: false,
+		position: null,
+		Chess: null,
+		AI: null,
+		Chessboard: null,
+		user: null,
+		spectatorMode: false,
+		aiMode: true,
 		currentUsers: 0,
 		isHost: true,
 		palette: null,
@@ -126,9 +130,12 @@ new Vue({
 				this.currentUsers--;
 			}
 
-			if (this.currentUsers === 1) {
-				return
-			}
+			this.aiMode = (this.currentUsers >= 2? false : true);
+
+			// handles the situation where the guest quits without making his move
+			if (this.currentUsers < 2 && msg.move === -1) this.moveComputer();
+
+			if (this.currentUsers === 1)	return;
 
 			if (this.isHost) {
 				console.log(this.presence.getSharedInfo());
@@ -150,10 +157,12 @@ new Vue({
 			switch(msg.content.action){
 				case 'init':
 					if (msg.content.type === 'Spectator')
-						this.spectator = true;
+						this.spectatorMode = true;
+					this.aiMode = false;
 					break;
 			}
 			this.Chess.load(msg.content.data);
+			this.AI = p4_fen2state(msg.content.data);
 			this.Chessboard.position(msg.content.data);
 		},
 
@@ -170,7 +179,8 @@ new Vue({
 			if (userMove === null)	return 'snapback';
 			this.position = this.Chess.fen();
 			
-			if (this.presence) {
+			this.AI.move(source, target);
+			if (this.presence && !this.aiMode) {
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
 					content: {
@@ -178,8 +188,6 @@ new Vue({
 					}
 				});
 			} else {
-				// what if they disconnect and want to continue game with computer?
-				this.AI.move(source, target);
 				this.moveComputer();
 			}
 		},
@@ -213,6 +221,7 @@ new Vue({
 		},
 
 		moveComputer(){
+			if (this.Chess.turn() === 'w') return;
 			let moves = this.AI.findmove(P4WN_DEFAULT_LEVEL + 1);
 			let start = String.fromCharCode(96+(moves[0]%10)) + (Math.floor(moves[0]/10)-1);
 			let end = String.fromCharCode(96+(moves[1]%10)) + (Math.floor(moves[1]/10)-1);
@@ -231,7 +240,7 @@ new Vue({
 
 		onDragStart: function(source, piece) {
 			// prevent the spectator from moving pieces
-			if (this.spectator)	return false;
+			if (this.spectatorMode)	return false;
 
 			// prevent drag when game is already over
 			if (this.Chess.game_over()) return false
@@ -281,8 +290,9 @@ new Vue({
 		},		
 
 		greySquare: function(square) {
-			var blackSquareGrey = this.user.colorvalue.fill;
-			var whiteSquareGrey = this.lightenColor(blackSquareGrey, 50);
+			var buddyColor = this.user.colorvalue.fill;
+			var blackSquareGrey = this.lightenColor(buddyColor, -50);
+			var whiteSquareGrey = this.lightenColor(buddyColor, 50);
 			var $square = $('#myBoard .square-' + square)
 		
 			var background = whiteSquareGrey
@@ -301,7 +311,11 @@ new Vue({
 			})
 		
 			// exit if there are no moves available for this square
-			if (moves.length === 0) return
+			if (moves.length === 0) return;
+
+			// in multiplayer mode only allow user to his own possible moves
+			if (moves[0].color === 'w' && !this.isHost)	return;
+			if (moves[0].color === 'b' && this.isHost)	return;
 		
 			// highlight the square they moused over
 			this.greySquare(square)
