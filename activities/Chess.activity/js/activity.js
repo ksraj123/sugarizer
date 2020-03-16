@@ -7,6 +7,7 @@ requirejs.config({
 });
 
 // To add -
+	// replay - reply from a specific move in history - will be always active in vs computer and active only at end in mutltiplayer
 	// test of bugs in spectatorMode - multiplayer mode
 			// Done - // it does not seem to be working on electron
 			// Done - // some error in spectator mode in electron console
@@ -44,7 +45,8 @@ new Vue({
 		isHost: true,
 		palette: null,
 		presence: null,
-		gameHistory: []
+		gameHistory: null,
+		gameStatus: null
 	},
 
 	created: function() {
@@ -97,9 +99,6 @@ new Vue({
 				if (!vm.isHost){
 					vm.Chessboard.flip();
 				}
-
-				// vm.coloizeIcons('w', environment.user);
-
 			});
 
 			// Link presence palette
@@ -141,6 +140,7 @@ new Vue({
 					}
 				}
 			);
+			vm.renderGameStatus();
 
 		})
 
@@ -156,32 +156,21 @@ new Vue({
 
 		// handles the situation where the guest quits without making his move
 		aiMode: function(newVal, oldVal){
-			if (newVal !== oldVal){
+			if (oldVal !== newVal){
 				if (newVal){
 					this.moveComputer();
 				}
+				this.renderGameStatus();
 			}
+		},
+
+		currentUsers: function(){
+			this.renderMembersList();
+			this.renderGameStatus();
 		}
 	},
 
 	methods: {
-
-		// buddy theme mode - colorize icons - not working right now
-		coloizeIcons: function(color, user){
-			var vm = this;
-			console.log(user.colorvalue);
-			requirejs(["sugar-web/graphics/icon"], function(icon){
-				var imgs = document.querySelectorAll('img');
-				imgs = Array.prototype.slice.call(imgs);
-				var elements = imgs.map(function(ele){
-					if (ele.attributes[3].localName === "data-piece")
-						if (ele.attributes[3].nodeValue[0] === color)
-							icon.colorize(ele, user.colorvalue);
-							// console.log(ele.attributes[3].nodeValue);
-				});
-
-			})
-		},
 
 		undo: function(){
 			// no undo in multiplayer
@@ -196,6 +185,69 @@ new Vue({
 		changeDifficulty: function(newDifficulty){
 			console.log("Difficulty  = " + newDifficulty);
 			this.difficulty = newDifficulty;
+		},
+
+		getBuddyIcon: function(userName){
+			var buddyIcon = document.createElement("div");
+			buddyIcon.className = "buddy";
+			buddyIcon.title = userName;
+			return buddyIcon;
+		},
+
+		renderGameStatus: function(){
+			var vm = this;
+			var gameStatusDisplay = document.getElementById("game-status");
+			gameStatusDisplay.innerHTML = "";
+			requirejs(["sugar-web/graphics/icon"], function(icon){
+				var vs = document.createElement("span");
+				vs.innerText = "vs";
+				console.log(vm.user.colorvalue);
+				if (vm.aiMode){
+					var buddyIcon = vm.getBuddyIcon(vm.user.name);
+					gameStatusDisplay.appendChild(buddyIcon);
+					icon.colorize(buddyIcon, vm.user.colorvalue);
+					gameStatusDisplay.appendChild(vs);
+					var computer = document.createElement("div");
+					computer.className = "computer";
+					computer.title = "Computer"
+					gameStatusDisplay.appendChild(computer);
+				} else {
+					gameStatusDisplay.innerHTML = "";
+					var playerWhite = vm.getBuddyIcon(vm.currentUsers[0].name);
+					gameStatusDisplay.appendChild(playerWhite);
+					icon.colorize(playerWhite, vm.currentUsers[0].colorvalue);
+					gameStatusDisplay.appendChild(vs);
+					var playerBlack = vm.getBuddyIcon(vm.currentUsers[1].name);
+					gameStatusDisplay.appendChild(playerBlack);
+					icon.colorize(playerBlack, vm.currentUsers[1].colorvalue);
+				}
+			})
+		},
+
+		// improve the styling a bit
+		renderMembersList: function(){
+			var gameMembersDisplay = document.getElementById("game-members");
+			gameMembersDisplay.innerHTML = "";
+			this.currentUsers.forEach(function(ele, idx){
+				if (idx === 0){
+					var activeMembers = document.createElement("h3");
+					activeMembers.innerText = "Active Members";
+					gameMembersDisplay.appendChild(activeMembers);
+				}
+				var text = document.createElement("span");
+				text.innerHTML = (idx <= 1 ? (' player ' + (idx === 0 ? 'white' : 'black')) : ' spectator');
+				var buddyIcon = document.createElement("div");
+				buddyIcon.className = "buddy";
+				buddyIcon.title = ele.name;
+				requirejs(["sugar-web/graphics/icon"], function(icon){
+					icon.colorize(buddyIcon, ele.colorvalue);
+				})
+				var member = document.createElement("div");
+				member.className = "game-members-member";
+				member.appendChild(buddyIcon);
+				member.appendChild(text);
+				gameMembersDisplay.appendChild(member);
+			});
 		},
 
 		// this function will be executed everytime a user joins or leaves on all connected users the details of changed user will be passed in as argument
@@ -229,9 +281,9 @@ new Vue({
 		onNetworkDataReceived: function(msg){
 			console.log("On netwrok data recieved!");
 			// no one recieves their own message as there is no point
-			if (this.presence.getUserInfo().networkId === msg.user.networkId) {
-				return;
-			}
+			// if (this.presence.getUserInfo().networkId === msg.user.networkId) {
+			// 	return;
+			// }
 			switch(msg.content.action){
 				case 'init':
 					this.currentUsers = msg.content.currentUsers;

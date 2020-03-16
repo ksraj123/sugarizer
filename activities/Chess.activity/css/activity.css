@@ -83,3 +83,36 @@ input[type="radio"]{
 .hide{
   display: none;
 }
+
+.buddy{
+  background-image: url(../icons/owner-icon.svg);
+  width: 10vh;
+  height: 10vh;
+}
+
+.game-members-member{
+  display: flex;
+  align-items: center;
+}
+
+#game-members{
+  background-color: white;
+  padding: 10px;
+  margin-left: -5px;
+  max-height: 25vh;
+  overflow-y: scroll;
+  width: 40vh;
+}
+
+.computer{
+  background-image: url(../icons/monitor.svg);
+  width: 100px;
+  height: 100px;
+}
+
+#game-status{
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background-color: white;
+}
