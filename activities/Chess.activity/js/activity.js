@@ -156,7 +156,6 @@ new Vue({
 
 		// handles the situation where the guest quits without making his move
 		aiMode: function(newVal, oldVal){
-				console.log("New aiMode = " + this.aiMode);
 				if (newVal){
 					this.moveComputer();
 				}
@@ -204,6 +203,7 @@ new Vue({
 				if (vm.aiMode || vm.currentUsers.length === 1){
 					gameStatusDisplay.innerHTML = "";
 					var buddyIcon = vm.getBuddyIcon(vm.user.name);
+					buddyIcon.classList.add("whitePlayer");
 					gameStatusDisplay.appendChild(buddyIcon);
 					icon.colorize(buddyIcon, vm.user.colorvalue);
 					gameStatusDisplay.appendChild(vs);
@@ -214,10 +214,14 @@ new Vue({
 				} else {
 					gameStatusDisplay.innerHTML = "";
 					var playerWhite = vm.getBuddyIcon(vm.currentUsers[0].name);
+					playerWhite.classList.add("whitePlayer");
+					if (vm.Chess.turn() === 'w') playerWhite.classList.add('blinking');
 					gameStatusDisplay.appendChild(playerWhite);
 					icon.colorize(playerWhite, vm.currentUsers[0].colorvalue);
 					gameStatusDisplay.appendChild(vs);
 					var playerBlack = vm.getBuddyIcon(vm.currentUsers[1].name);
+					playerBlack.classList.add("blackPlayer");
+					if (vm.Chess.turn() === 'b') playerBlack.classList.add('blinking');
 					gameStatusDisplay.appendChild(playerBlack);
 					icon.colorize(playerBlack, vm.currentUsers[1].colorvalue);
 				}
@@ -226,27 +230,19 @@ new Vue({
 
 		// improve the styling a bit
 		renderMembersList: function(){
-			var gameMembersDisplay = document.getElementById("game-members");
+			var gameMembersDisplay = document.getElementById("game-members-list");
 			gameMembersDisplay.innerHTML = "";
 			this.currentUsers.forEach(function(ele, idx){
-				if (idx === 0){
-					var activeMembers = document.createElement("h3");
-					activeMembers.innerText = "Active Members";
-					gameMembersDisplay.appendChild(activeMembers);
-				}
-				var text = document.createElement("span");
-				text.innerHTML = (idx <= 1 ? (' player ' + (idx === 0 ? 'white' : 'black')) : ' spectator');
 				var buddyIcon = document.createElement("div");
 				buddyIcon.className = "buddy";
-				buddyIcon.title = ele.name;
+				buddyIcon.title = ele.name + ' (' 
+					+ (idx <= 1 ? ('player - ' + (idx === 0 ? 'white' : 'black')) : ' spectator') + ')';
+				if (idx === 0) buddyIcon.style.backgroundColor = "white";
+				if (idx === 1) buddyIcon.style.backgroundColor = "black";
 				requirejs(["sugar-web/graphics/icon"], function(icon){
 					icon.colorize(buddyIcon, ele.colorvalue);
 				})
-				var member = document.createElement("div");
-				member.className = "game-members-member";
-				member.appendChild(buddyIcon);
-				member.appendChild(text);
-				gameMembersDisplay.appendChild(member);
+				gameMembersDisplay.appendChild(buddyIcon);
 			});
 		},
 
@@ -282,11 +278,7 @@ new Vue({
 		},
 
 		onNetworkDataReceived: function(msg){
-			console.log("On netwrok data recieved!");
-			// no one recieves their own message as there is no point
-			// if (this.presence.getUserInfo().networkId === msg.user.networkId) {
-			// 	return;
-			// }
+
 			switch(msg.content.action){
 				case 'init':
 					this.currentUsers = (msg.content.currentUsers).slice(0);
@@ -294,7 +286,6 @@ new Vue({
 			}
 
 			var currentUserNetId = this.presence.getUserInfo().networkId;
-			console.log("current user = " + currentUserNetId);
 			
 			if (this.currentUsers[0].networkId == currentUserNetId){
 				this.isHost = true;
@@ -307,7 +298,6 @@ new Vue({
 			}
 
 			if (this.currentUsers.length <= 1){
-				console.log("herererer");
 				this.aiMode = true;
 			} else {
 				this.aiMode = false;
@@ -316,6 +306,7 @@ new Vue({
 			this.Chess.load(msg.content.data);
 			this.AI = p4_fen2state(msg.content.data);
 			this.Chessboard.position(msg.content.data);
+			this.renderGameStatus();
 		},
 
 		onDropPiece: function(source, target){
@@ -407,7 +398,6 @@ new Vue({
 				return false
 			}
 
-			// the host - assumed to be white cannot move pieces of black even if its blacks turn
 			if (this.presence){
 				console.log("Into presense block! " + this.isHost);
 				if (this.isHost){
@@ -466,10 +456,8 @@ new Vue({
 				verbose: true
 			})
 		
-			// exit if there are no moves available for this square
 			if (moves.length === 0) return;
 
-			// in multiplayer mode only allow user to his own possible moves
 			if (moves[0].color === 'w' && !this.isHost)	return;
 			if (moves[0].color === 'b' && this.isHost)	return;
 		
