@@ -202,6 +202,7 @@ new Vue({
 				vs.innerText = "vs";
 				console.log(vm.user.colorvalue);
 				if (vm.aiMode || vm.currentUsers.length === 1){
+					gameStatusDisplay.innerHTML = "";
 					var buddyIcon = vm.getBuddyIcon(vm.user.name);
 					gameStatusDisplay.appendChild(buddyIcon);
 					icon.colorize(buddyIcon, vm.user.colorvalue);
@@ -262,7 +263,10 @@ new Vue({
 				});
 			}
 
-			// if (this.currentUsers.length === 1)	return;
+			if (this.currentUsers.length === 1){
+				this.aiMode = true;
+				return
+			};
 
 			// all messages are sent to all in precense
 			if (this.isHost) {
