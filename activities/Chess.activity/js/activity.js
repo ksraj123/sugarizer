@@ -156,12 +156,11 @@ new Vue({
 
 		// handles the situation where the guest quits without making his move
 		aiMode: function(newVal, oldVal){
-			if (oldVal !== newVal){
+				console.log("New aiMode = " + this.aiMode);
 				if (newVal){
 					this.moveComputer();
 				}
 				this.renderGameStatus();
-			}
 		},
 
 		currentUsers: function(){
@@ -202,7 +201,7 @@ new Vue({
 				var vs = document.createElement("span");
 				vs.innerText = "vs";
 				console.log(vm.user.colorvalue);
-				if (vm.aiMode){
+				if (vm.aiMode || vm.currentUsers.length === 1){
 					var buddyIcon = vm.getBuddyIcon(vm.user.name);
 					gameStatusDisplay.appendChild(buddyIcon);
 					icon.colorize(buddyIcon, vm.user.colorvalue);
@@ -263,7 +262,7 @@ new Vue({
 				});
 			}
 
-			if (this.currentUsers.length === 1)	return;
+			// if (this.currentUsers.length === 1)	return;
 
 			// all messages are sent to all in precense
 			if (this.isHost) {
@@ -286,7 +285,7 @@ new Vue({
 			// }
 			switch(msg.content.action){
 				case 'init':
-					this.currentUsers = msg.content.currentUsers;
+					this.currentUsers = (msg.content.currentUsers).slice(0);
 					break;
 			}
 
@@ -304,6 +303,7 @@ new Vue({
 			}
 
 			if (this.currentUsers.length <= 1){
+				console.log("herererer");
 				this.aiMode = true;
 			} else {
 				this.aiMode = false;
@@ -370,6 +370,7 @@ new Vue({
 		},
 
 		moveComputer(){
+			console.log("In move computer!");
 			if (this.Chess.turn() === 'w') return;
 			let moves = this.AI.findmove(this.difficulty + 1);
 			let start = String.fromCharCode(96+(moves[0]%10)) + (Math.floor(moves[0]/10)-1);
