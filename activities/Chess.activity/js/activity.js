@@ -45,7 +45,7 @@ new Vue({
 		isHost: true,
 		palette: null,
 		presence: null,
-		gameHistory: null,
+		gameHistory: [],
 		gameStatus: null
 	},
 
@@ -165,6 +165,23 @@ new Vue({
 		currentUsers: function(){
 			this.renderMembersList();
 			this.renderGameStatus();
+		},
+
+		gameHistory: function(newHistory, oldHistory){
+			if (newHistory.length === 0){
+				document.getElementById("game-history-list").innerHTML = "";
+				return;
+			}
+			var toAppend = newHistory.slice(oldHistory.length);
+			toAppend.forEach(function(ele){
+				var item = document.createElement("div");
+				item.innerHTML = '<span>' + ele.color + ' ' + ele.piece + ' from ' + ele.from + ' to ' + ele.to+ '</span>';
+				if (this.aiMode){
+					console.log(this.user.colorvalue);
+					item.style.color = this.user.colorvalue.stroke;
+				}
+				document.getElementById("game-history-list").appendChild(item);
+			})
 		}
 	},
 
@@ -302,11 +319,20 @@ new Vue({
 			} else {
 				this.aiMode = false;
 			}
-
-			this.Chess.load(msg.content.data);
-			this.AI = p4_fen2state(msg.content.data);
-			this.Chessboard.position(msg.content.data);
-			this.renderGameStatus();
+			
+			if (this.presence.getUserInfo().networkId !== msg.user.networkId){
+				if (msg.content.userMove === 'RESET'){
+					this.Chess.load(msg.content.data);
+				} else {
+					this.Chess.move({ from: msg.content.userMove.from, to: msg.content.userMove.to, promotion: 'q'});
+				}
+				this.gameHistory = this.Chess.history({verbose: true});
+				console.log("history!");
+				console.log(this.gameHistory);
+				this.AI = p4_fen2state(msg.content.data);
+				this.Chessboard.position(msg.content.data);
+				this.renderGameStatus();
+			}
 		},
 
 		onDropPiece: function(source, target){
@@ -321,6 +347,7 @@ new Vue({
 			
 			if (userMove === null)	return 'snapback';
 			this.position = this.Chess.fen();
+			this.gameHistory = this.Chess.history({verbose: true});
 			
 			this.AI.move(source, target);
 			console.log("in drop piece presence! " + this.aiMode);
@@ -328,11 +355,12 @@ new Vue({
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
 					content: {
-						data: this.position
+						data: this.position,
+						userMove: userMove
 					}
 				});
 			} else {
-				this.moveComputer();
+				setTimeout(this.moveComputer, 1000);
 			}
 		},
 
@@ -352,12 +380,14 @@ new Vue({
 			this.AI = p4_fen2state(P4_INITIAL_BOARD);
 			this.Chess = new Chess();
 			this.position = this.Chess.fen();
+			this.gameHistory = [];
 
 			if (this.presence) {
 				this.presence.sendMessage(this.presence.getSharedInfo().id, {
 					user: this.presence.getUserInfo(),
 					content: {
-						data: this.position
+						data: this.position,
+						userMove: 'RESET'
 					}
 				});
 			}
@@ -371,6 +401,7 @@ new Vue({
 			let start = String.fromCharCode(96+(moves[0]%10)) + (Math.floor(moves[0]/10)-1);
 			let end = String.fromCharCode(96+(moves[1]%10)) + (Math.floor(moves[1]/10)-1);
 			this.Chess.move({from: start, to: end });
+			this.gameHistory = this.Chess.history({verbose: true});
 			this.AI.move(start + '-' + end);
 			this.position = this.Chess.fen();
 

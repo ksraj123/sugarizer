@@ -176,4 +176,16 @@ input[type="radio"]{
 
 #game-history{
   height: 54vh;
+  overflow-y: scroll;
+}
+
+#game-history{
+  padding: 2vh;
+  font-size: 3vh;
+  background-color: white;
+}
+
+#game-history-list{
+  display: flex;
+  flex-direction: column-reverse;
 }
